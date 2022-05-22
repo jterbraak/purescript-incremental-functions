@@ -11,10 +11,10 @@ import Data.Incremental.Record as IRecord
 import Data.Map as Map
 import Data.Maybe.Last (Last(..))
 import Data.Newtype (unwrap, wrap)
-import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Test.Assert (assert)
+import Type.Proxy (Proxy(..))
 
 -- | The function \x -> x * 2, together with its derivative
 times2 :: Jet (Atomic Int) -> Jet (Atomic Int)
@@ -60,9 +60,9 @@ main = do
 
   let testRecord :: IRecord.IRecord (foo :: Atomic Int, bar :: Atomic Char)
       testRecord = IRecord.IRecord { foo: wrap 0, bar: wrap 'a' }
-      t7 = IRecord.get (SProxy :: SProxy "foo")
+      t7 = IRecord.get ( Proxy :: Proxy "foo")
              { position: testRecord
-             , velocity: IRecord.update (SProxy :: SProxy "foo") (replace 42)
+             , velocity: IRecord.update (Proxy :: Proxy "foo") (replace 42)
              }
   assert (unwrap t7.position == 0)
   assert (fromChange t7.velocity == fromChange (replace 42))

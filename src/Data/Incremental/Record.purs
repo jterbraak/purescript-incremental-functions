@@ -14,105 +14,107 @@ import Prelude
 
 import Data.Incremental (class Patch, Change, Jet, fromChange, patch, toChange)
 import Data.Newtype (class Newtype, unwrap, wrap)
-import Data.Symbol (class IsSymbol, SProxy(..))
-import Type.Row (class RowToList, Cons, Nil, RLProxy(..), kind RowList)
-import Record as Record
+import Data.Symbol (class IsSymbol)
 import Prim.Row as Row
+import Prim.RowList (class RowToList, Cons, Nil, RowList)
+import Record as Record
+import Type.Proxy (Proxy(..))
 
 newtype IRecord r = IRecord (Record r)
 
 derive instance newtypeIRecord :: Newtype (IRecord a) _
 
-instance semigroupRecord
-    :: (RowToList r rl, SemigroupRL rl r)
+instance ( RowToList r rl, SemigroupRL rl r)
     => Semigroup (IRecord r) where
-  append (IRecord x) (IRecord y) = IRecord (appendRL (RLProxy :: RLProxy rl) x y)
+  append (IRecord x) (IRecord y) = IRecord (appendRL ( Proxy :: _ rl) x y)
 
-class SemigroupRL (rl :: RowList) r | rl -> r where
-  appendRL :: RLProxy rl -> Record r -> Record r -> Record r
+class SemigroupRL (rl :: RowList Type ) r | rl -> r where
+  appendRL :: Proxy rl -> Record r -> Record r -> Record r
 
-instance semigroupRLNil :: SemigroupRL Nil () where
+instance SemigroupRL Nil () where
   appendRL _ _ _ = {}
 
-instance semigroupRLCons
-    :: ( IsSymbol l
-       , Semigroup a
-       , SemigroupRL rl r1
-       , Row.Cons l a r1 r2
-       , Row.Lacks l r1
-       )
-    => SemigroupRL (Cons l a rl) r2 where
-  appendRL _ x y =
-      Record.insert l
-        (append (Record.get l x) (Record.get l y))
-        rest
+instance
+    ( IsSymbol l
+    , Semigroup a
+    , SemigroupRL rl r1
+    , Row.Cons l a r1 r2
+    , Row.Lacks l r1
+    ) => SemigroupRL ( Cons l a rl) r2
     where
-      l = SProxy :: SProxy l
+    appendRL _ x y =
+        Record.insert l
+            (append (Record.get l x) (Record.get l y))
+            rest
+        
+        where
+        
+        l = Proxy :: _ l
 
-      rest :: Record r1
-      rest = appendRL (RLProxy :: RLProxy rl) (Record.delete l x) (Record.delete l y)
+        rest :: Record r1
+        rest = appendRL (Proxy :: Proxy rl) (Record.delete l x) (Record.delete l y)
 
-instance monoidRecord
-    :: (RowToList r rl, MonoidRL rl r)
-    => Monoid (IRecord r) where
-  mempty = IRecord (memptyRL (RLProxy :: RLProxy rl))
+instance ( RowToList r rl, MonoidRL rl r ) => Monoid ( IRecord r ) where
+  mempty = IRecord (memptyRL (Proxy :: Proxy rl))
 
-class SemigroupRL rl r <= MonoidRL (rl :: RowList) r | rl -> r where
-  memptyRL :: RLProxy rl -> Record r
+class SemigroupRL rl r <= MonoidRL (rl :: RowList Type ) r | rl -> r where
+  memptyRL :: Proxy rl -> Record r
 
-instance monoidRLNil :: MonoidRL Nil () where
+instance MonoidRL Nil () where
   memptyRL _ = {}
 
-instance monoidRLCons
-    :: ( IsSymbol l
-       , Monoid a
-       , MonoidRL rl r1
-       , Row.Cons l a r1 r2
-       , Row.Lacks l r1
-       )
-    => MonoidRL (Cons l a rl) r2 where
-  memptyRL _ =
-      Record.insert l mempty rest
+instance 
+    ( IsSymbol l
+    , Monoid a
+    , MonoidRL rl r1
+    , Row.Cons l a r1 r2
+    , Row.Lacks l r1
+    ) => MonoidRL (Cons l a rl) r2
     where
-      l = SProxy :: SProxy l
+    memptyRL _ =
+        Record.insert l mempty rest
+        
+        where
+        
+        l = Proxy :: Proxy l
 
-      rest :: Record r1
-      rest = memptyRL (RLProxy :: RLProxy rl)
+        rest :: Record r1
+        rest = memptyRL (Proxy :: Proxy rl)
 
-instance patchRecord
-    :: (RowToList r rl, RowToList d dl, MonoidRL dl d, PatchRL r rl d dl)
+instance (RowToList r rl, RowToList d dl, MonoidRL dl d, PatchRL r rl d dl)
     => Patch (IRecord r) (IRecord d) where
-  patch (IRecord r) (IRecord d) = IRecord (patchRL (RLProxy :: RLProxy rl) (RLProxy :: RLProxy dl) r d)
+  patch (IRecord r) (IRecord d) = IRecord (patchRL (Proxy :: Proxy rl) (Proxy :: Proxy dl) r d)
 
-class MonoidRL dl d <= PatchRL r (rl :: RowList) d (dl :: RowList) | rl -> r, dl -> d, rl -> dl where
-  patchRL :: RLProxy rl -> RLProxy dl -> Record r -> Record d -> Record r
+class MonoidRL dl d <= PatchRL r (rl :: RowList Type ) d (dl :: RowList Type ) | rl -> r, dl -> d, rl -> dl where
+  patchRL :: Proxy rl -> Proxy dl -> Record r -> Record d -> Record r
 
-instance patchRLNil :: PatchRL () Nil () Nil where
+instance PatchRL () Nil () Nil where
   patchRL _ _ _ _ = {}
 
-instance patchRLCons
-    :: ( IsSymbol l
-       , Patch a m
-       , PatchRL r1 rl d1 dl
-       , Row.Cons l a r1 r2
-       , Row.Cons l m d1 d2
-       , Row.Lacks l r1
-       , Row.Lacks l d1
-       )
-    => PatchRL r2 (Cons l a rl) d2 (Cons l m dl) where
-  patchRL _ _ x y =
-      Record.insert l
-        (patch (Record.get l x) (Record.get l y))
-        rest
+instance
+    ( IsSymbol l
+    , Patch a m
+    , PatchRL r1 rl d1 dl
+    , Row.Cons l a r1 r2
+    , Row.Cons l m d1 d2
+    , Row.Lacks l r1
+    , Row.Lacks l d1
+    ) => PatchRL r2 ( Cons l a rl ) d2 ( Cons l m dl )
     where
-      l = SProxy :: SProxy l
+    patchRL _ _ x y =
+        Record.insert l
+            (patch (Record.get l x) (Record.get l y))
+            rest
+        
+        where
+        
+        l = Proxy :: Proxy l
 
-      rest :: Record r1
-      rest = patchRL (RLProxy :: RLProxy rl) (RLProxy :: RLProxy dl) (Record.delete l x) (Record.delete l y)
+        rest :: Record r1
+        rest = patchRL (Proxy :: Proxy rl) (Proxy :: Proxy dl) (Record.delete l x) (Record.delete l y)
 
 -- | An incremental property accessor function
-get
-  :: forall l a da r rl rest1 rest2 d dl
+get :: forall l a da r rl rest1 rest2 d dl
    . IsSymbol l
   => Row.Cons l a rest1 r
   => Row.Cons l da rest2 d
@@ -120,7 +122,7 @@ get
   => RowToList d dl
   => PatchRL r rl d dl
   => Patch a da
-  => SProxy l
+  => Proxy l
   -> Jet (IRecord r)
   -> Jet a
 get l { position, velocity } =
@@ -129,8 +131,7 @@ get l { position, velocity } =
   }
 
 -- | An incremental property update function
-update
-  :: forall l a da r rl rest1 rest2 d dl
+update :: forall l a da r rl rest1 rest2 d dl
    . IsSymbol l
   => Row.Cons l a rest1 r
   => Row.Cons l da rest2 d
@@ -138,7 +139,7 @@ update
   => RowToList d dl
   => PatchRL r rl d dl
   => Patch a da
-  => SProxy l
+  => Proxy l
   -> Change a
   -> Change (IRecord r)
 update l c = toChange (wrap (Record.set l (fromChange c) (unwrap (mempty :: IRecord d))))

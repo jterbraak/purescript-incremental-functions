@@ -31,28 +31,28 @@ class Monoid d <= Patch a d | a -> d where
 class Patch a d <= Diff a d | a -> d where
   diff :: a -> a -> d
 
-instance patchUnit :: Patch Unit Unit where
+instance Patch Unit Unit where
   patch _ _ = unit
 
-instance diffUnit :: Diff Unit Unit where
+instance Diff Unit Unit where
   diff _ _ = unit
 
-instance patchTuple :: (Patch a da, Patch b db) => Patch (Tuple a b) (Tuple da db) where
+instance (Patch a da, Patch b db) => Patch (Tuple a b) (Tuple da db) where
   patch (Tuple a b) (Tuple c d) = Tuple (patch a c) (patch b d)
 
-instance diffTuple :: (Diff a da, Diff b db) => Diff (Tuple a b) (Tuple da db) where
+instance (Diff a da, Diff b db) => Diff (Tuple a b) (Tuple da db) where
   diff (Tuple a b) (Tuple c d) = Tuple (diff a c) (diff b d)
 
 -- | A type level function which maps a type to the type of its change structure.
 -- |
 -- | Uniqueness of instances makes the coercions `fromChange` and `toChange` safe,
 -- | since the functional dependency makes the change structure type unique.
-data Change a
+data Change ( a :: Type )
 
-instance semigroupChange :: (Patch a da, Semigroup da) => Semigroup (Change a) where
+instance (Patch a da, Semigroup da) => Semigroup (Change a) where
   append x y = toChange (fromChange x <> fromChange y)
 
-instance monoidChange :: (Patch a da, Monoid da) => Monoid (Change a) where
+instance (Patch a da, Monoid da) => Monoid (Change a) where
   mempty = toChange mempty
 
 fromChange :: forall a da. Patch a da => Change a -> da
