@@ -18,21 +18,24 @@ import Data.Newtype (class Newtype, unwrap, wrap)
 -- | A change structure for any type with equality.
 newtype Atomic a = Atomic a
 
-derive instance eqAtomic :: Eq a => Eq (Atomic a)
-derive instance ordAtomic :: Ord a => Ord (Atomic a)
-derive instance newtypeAtomic :: Newtype (Atomic a) _
+derive instance Eq a => Eq (Atomic a)
+derive instance Ord a => Ord (Atomic a)
+derive instance Newtype (Atomic a) _
 
-instance showAtomic :: Show a => Show (Atomic a) where
+instance Show a => Show (Atomic a) where
   show (Atomic a) = "(Atomic " <> show a <> ")"
 
-instance patchAtomic :: Patch (Atomic a) (Last a) where
+instance Patch (Atomic a) (Last a) where
   patch x (Last Nothing) = x
   patch _ (Last (Just y)) = Atomic y
 
-instance diffAtomic :: Eq a => Diff (Atomic a) (Last a) where
+instance Eq a => Diff (Atomic a) (Last a) where
   diff (Atomic x) (Atomic y)
     | x == y = Last Nothing
     | otherwise = Last (Just y)
+
+derive newtype instance Semigroup a => Semigroup ( Atomic a )
+derive newtype instance Monoid a => Monoid ( Atomic a )
 
 -- | Change by replacing the current value.
 replace :: forall a. a -> Change (Atomic a)
